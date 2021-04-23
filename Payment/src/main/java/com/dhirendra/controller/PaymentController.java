@@ -28,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RestController
 @RequestMapping(value = "/v1.0.0")
-public class PaymentController extends AbstractBaseRestController implements BaseController {
+public class PaymentController implements BaseController {
 
 	private final HttpServletRequest request;
 
