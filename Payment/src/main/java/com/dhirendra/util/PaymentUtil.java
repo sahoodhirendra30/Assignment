@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.Arrays;
 
+import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 
 import com.google.gson.Gson;
@@ -14,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 public class PaymentUtil {
 
 	/**
-	 * 
+	 * fetch the requestbody
 	 * 
 	 * @param req
 	 * @return
@@ -47,11 +48,20 @@ public class PaymentUtil {
 
 	}
 
+	/**
+	 * Sum of digits in String
+	 * 
+	 * @param account
+	 * @return
+	 */
+
 	public static Integer sum(String account) {
 
-		return Arrays.stream(account.split(""))
-			    .filter((s) -> s.matches("\\d+"))
-			    .mapToInt(Integer::valueOf)
-			    .sum();
+		return Arrays.stream(account.split("")).filter((s) -> s.matches("\\d+")).mapToInt(Integer::valueOf).sum();
+	}
+
+	public static String getServletResponseAsString(ServletResponse response) {
+		Gson gson = new Gson();
+		return gson.toJson(response, Object.class);
 	}
 }

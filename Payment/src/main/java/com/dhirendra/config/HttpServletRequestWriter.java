@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * 
  * Request wrapper class
+ * 
  * @author
  *
  */
@@ -40,9 +41,10 @@ public class HttpServletRequestWriter extends HttpServletRequestWrapper {
 	public void addHeader(String name, String uuid) {
 		setHeader(name);
 	}
-	
+
 	/**
 	 * set header type
+	 * 
 	 * @param headerName
 	 */
 
@@ -68,6 +70,24 @@ public class HttpServletRequestWriter extends HttpServletRequestWrapper {
 			index++;
 		}
 		return Collections.enumeration(headerVals);
+	}
+
+	/**
+	 * header information
+	 * @param request
+	 * @return
+	 */
+	public Map<String, String> getHeadersInfo(HttpServletRequest request) {
+		Map<String, String> map = new HashMap<String, String>();
+
+		Enumeration headerNames = request.getHeaderNames();
+		while (headerNames.hasMoreElements()) {
+			String key = (String) headerNames.nextElement();
+			String value = request.getHeader(key);
+			map.put(key, value);
+		}
+
+		return map;
 	}
 
 	@Override

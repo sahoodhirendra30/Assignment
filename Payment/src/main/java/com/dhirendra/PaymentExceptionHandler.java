@@ -13,7 +13,6 @@ import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
@@ -22,6 +21,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 import com.dhirendra.exception.PaymentError;
 import com.dhirendra.exception.PaymentException;
+import com.dhirendra.model.ErrorReasonCode;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -42,37 +42,28 @@ public class PaymentExceptionHandler extends ResponseEntityExceptionHandler {
 	}
 
 	/**
-	 * Fall-back handler
+	 * 
 	 * 
 	 * @param ex
 	 * @param request
 	 * @return
 	 */
 
-	@ExceptionHandler({ Exception.class })
-	public ResponseEntity<Object> handleAll(Exception ex, WebRequest request) {
-		PaymentError paymentError = new PaymentError(HttpStatus.INTERNAL_SERVER_ERROR, ex.getLocalizedMessage(),
-				"error occurred");
+	@ExceptionHandler({ PaymentException.class })
+	public ResponseEntity<Object> handleAll(PaymentException paymentException, WebRequest request) {
+		PaymentError paymentError = new PaymentError(HttpStatus.UNPROCESSABLE_ENTITY,
+				paymentException.getLocalizedMessage(), "error occurred", ErrorReasonCode.LIMIT_EXCEEDED);
 		return new ResponseEntity<Object>(paymentError, new HttpHeaders(), paymentError.getStatus());
 	}
 
 	/**
-	 * Handle All generic exception thrown by the application
-	 *
-	 * @param exception - Generic Exception thrown
-	 * @param request   - the WebRequest
-	 * @return {@link ResponseEntity} - the ResResponseEntity
+	 * Fall-back handler
+	 * 
+	 * @param exception
+	 * @return
 	 */
-	@ExceptionHandler({ PaymentException.class })
+	@ExceptionHandler({ Exception.class })
 	public ResponseEntity<Object> handleAllException(Exception exception) {
-		log.warn("handleAllException :: There was an unknow exception", exception);
-		log.debug("handleAllException :: There was an unknow exception");
-		Error error = new Error("There was some unknown exception");
-		return new ResponseEntity<Object>(error, new HttpHeaders(), HttpStatus.UNAUTHORIZED);
-	}
-
-	@ExceptionHandler({ NullPointerException.class })
-	public ResponseEntity<Object> handleNullException(Exception exception) {
 		log.warn("handleAllException :: There was an unknow exception", exception);
 		log.debug("handleAllException :: There was an unknow exception");
 		Error error = new Error("There was some unknown exception");
@@ -80,6 +71,7 @@ public class PaymentExceptionHandler extends ResponseEntityExceptionHandler {
 	}
 
 	/**
+	 * Validation error
 	 * 
 	 * @param ex
 	 * @param request
@@ -94,20 +86,8 @@ public class PaymentExceptionHandler extends ResponseEntityExceptionHandler {
 					+ violation.getMessage());
 		}
 
-		PaymentError paymentError = new PaymentError(HttpStatus.BAD_REQUEST, ex.getLocalizedMessage(), errors);
-		return new ResponseEntity<Object>(paymentError, new HttpHeaders(), paymentError.getStatus());
-	}
-
-	/**
-	 * 
-	 * request missing parameter
-	 */
-	@Override
-	protected ResponseEntity<Object> handleMissingServletRequestParameter(MissingServletRequestParameterException ex,
-			HttpHeaders headers, HttpStatus status, WebRequest request) {
-		String error = ex.getParameterName() + " parameter is missing";
-
-		PaymentError paymentError = new PaymentError(HttpStatus.BAD_REQUEST, ex.getLocalizedMessage(), error);
+		PaymentError paymentError = new PaymentError(HttpStatus.BAD_REQUEST, ex.getLocalizedMessage(), errors,
+				ErrorReasonCode.INVALID_REQUEST);
 		return new ResponseEntity<Object>(paymentError, new HttpHeaders(), paymentError.getStatus());
 	}
 
@@ -122,7 +102,8 @@ public class PaymentExceptionHandler extends ResponseEntityExceptionHandler {
 			errors.add(error.getObjectName() + ": " + error.getDefaultMessage());
 		}
 
-		PaymentError paymentError = new PaymentError(HttpStatus.BAD_REQUEST, ex.getLocalizedMessage(), errors);
+		PaymentError paymentError = new PaymentError(HttpStatus.BAD_REQUEST, ex.getLocalizedMessage(), errors,
+				ErrorReasonCode.INVALID_REQUEST);
 		return handleExceptionInternal(ex, paymentError, headers, paymentError.getStatus(), request);
 	}
 
@@ -139,7 +120,8 @@ public class PaymentExceptionHandler extends ResponseEntityExceptionHandler {
 			WebRequest request) {
 		String error = ex.getName() + " should be of type " + ex.getRequiredType().getName();
 
-		PaymentError paymentError = new PaymentError(HttpStatus.BAD_REQUEST, ex.getLocalizedMessage(), error);
+		PaymentError paymentError = new PaymentError(HttpStatus.BAD_REQUEST, ex.getLocalizedMessage(), error,
+				ErrorReasonCode.INVALID_REQUEST);
 		return new ResponseEntity<Object>(paymentError, new HttpHeaders(), paymentError.getStatus());
 	}
 

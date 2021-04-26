@@ -24,6 +24,13 @@ public class HttpServletResponseWriter extends HttpServletResponseWrapper {
 		out = new WapperedOutputStream(buffer);
 		writer = new PrintWriter(new OutputStreamWriter(buffer, this.getCharacterEncoding()));
 	}
+	
+	public HttpServletResponseWriter(HttpServletResponse resp, String encryptedResponse) throws IOException {
+		super(resp);
+		buffer = new ByteArrayOutputStream();
+		out = new WapperedOutputStream(buffer);
+		writer = new PrintWriter(new OutputStreamWriter(buffer, this.getCharacterEncoding()));
+	}
 
 	@Override
 	public ServletOutputStream getOutputStream() throws IOException {
@@ -83,5 +90,10 @@ public class HttpServletResponseWriter extends HttpServletResponseWrapper {
 			// TODO Auto-generated method stub
 
 		}
+	}
+
+	public void setResponse(String encryptedResponse) {
+		
+
 	}
 }
