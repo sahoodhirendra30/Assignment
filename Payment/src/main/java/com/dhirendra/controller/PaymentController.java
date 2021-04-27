@@ -1,10 +1,10 @@
 package com.dhirendra.controller;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,29 +24,24 @@ import lombok.extern.slf4j.Slf4j;
 @RequestMapping(value = "/v1.0.0")
 public class PaymentController implements BaseController {
 
-	private final HttpServletRequest request;
-
 	@Autowired
 	PaymentService paymentService;
 
-	public PaymentController(HttpServletRequest request) {
-		this.request = request;
-	}
-
-	@PostMapping(value = "/initiate-payment")
+	/**
+	 * 
+	 * POST method to initiate the payment
+	 */
+	
+	@PostMapping(value = "/initiate-payment", consumes = MediaType.TEXT_PLAIN_VALUE, produces = MediaType.TEXT_PLAIN_VALUE)
 	public ResponseEntity<PaymentResponse> initiatePayment(
 			@RequestHeader(value = "X-Request-Id", required = true) String xRequestId,
 			@RequestHeader(value = "Signature-Certificate", required = true) String signatureCertificate,
 			@RequestHeader(value = "Signature", required = true) String signature,
 			@Valid @RequestBody PaymentInitiationRequest paymentInitiationRequest) throws PaymentException {
 
-		if (request.getHeader("Accept") != null && request.getHeader("Accept").contains("application/json")) {
-
-			PaymentResponse paymentResponse = paymentService.paymentLimitCheck(paymentInitiationRequest);
-			return new ResponseEntity<PaymentResponse>(paymentResponse, HttpStatus.CREATED);
-		}
-
-		log.error("content type is not application/json", paymentInitiationRequest);
-		return new ResponseEntity<PaymentResponse>(HttpStatus.INTERNAL_SERVER_ERROR);
+		log.info("Inside paymentController controller initiatePayment()");
+		PaymentResponse paymentResponse = paymentService.paymentLimitCheck(paymentInitiationRequest);
+		return new ResponseEntity<PaymentResponse>(paymentResponse, HttpStatus.CREATED);
 	}
+
 }
