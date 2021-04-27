@@ -10,6 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -49,9 +50,12 @@ class PaymentControllerTest {
 		assertFalse(paymentResponse.getPaymentId().isEmpty());
 	}
 
+	@SuppressWarnings("unlikely-arg-type")
 	@Test
-	public void testContentType() throws PaymentException {
+	public void testContentTypeAndWithPaymentIdHeader() throws PaymentException {
 		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.setContentType(MediaType.TEXT_PLAIN_VALUE);
+		request.addHeader("xRequestId", "29318e25-cebd-498c-888a-f77672f66449");
 		RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 		PaymentInitiationRequest paymentInitiationRequest = new PaymentInitiationRequest("NL02RABO7134384551",
 				"NL94ABNA1008270121", "1.00", "EUR", "1234");
@@ -63,9 +67,9 @@ class PaymentControllerTest {
 		paymentResponse.setStatus(TransactionStatus.ACCEPTED);
 
 		when(paymentService.paymentLimitCheck(paymentInitiationRequest)).thenReturn(paymentResponse);
-		assertThat(responseEntity.getStatusCodeValue()).isEqualTo(201);
-		assertThat(paymentResponse.getStatus()).isEqualTo("Accepted");
-		assertFalse(paymentResponse.getPaymentId().isEmpty());
+		assertThat(responseEntity.getHeaders().get("xRequestId").equals("29318e25-cebd-498c-888a-f77672f66449"));
+		assertThat(request.getContentType().equalsIgnoreCase("text/plain"));
+		
 	}
 
 }
