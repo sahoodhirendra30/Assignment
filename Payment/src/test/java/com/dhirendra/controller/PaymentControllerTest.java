@@ -1,56 +1,71 @@
 package com.dhirendra.controller;
 
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
+import com.dhirendra.exception.PaymentException;
 import com.dhirendra.model.PaymentInitiationRequest;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.dhirendra.model.PaymentResponse;
+import com.dhirendra.model.TransactionStatus;
+import com.dhirendra.service.PaymentService;
 
-@WebMvcTest
+@ExtendWith(MockitoExtension.class)
 class PaymentControllerTest {
 
-	@Autowired
-	private MockMvc mvc;
+	@InjectMocks
+	PaymentController paymentController;
+
+	@Mock
+	PaymentService paymentService;
 
 	@Test
-	public void prepareRequestBody() throws Exception {
-		mvc.perform(MockMvcRequestBuilders.post("/v1.0.0/initiate-payment")
-				.content(asJsonString(new PaymentInitiationRequest("NL02RABO7134384551", "NL94ABNA1008270121", "1.00",
-						"EUR", "1234")))
-				.contentType(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON))
+	public void testPaymentInitiationRequestRequestBodyWithoutHeaders() throws PaymentException {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+		PaymentInitiationRequest paymentInitiationRequest = new PaymentInitiationRequest("NL02RABO7134384551",
+				"NL94ABNA1008270121", "1.00", "EUR", "1234");
+		ResponseEntity<PaymentResponse> responseEntity = paymentController.initiatePayment(null, null, null,
+				paymentInitiationRequest);
+		ResponseEntity.status(HttpStatus.CREATED);
+		PaymentResponse paymentResponse = new PaymentResponse();
+		paymentResponse.setPaymentId("1");
+		paymentResponse.setStatus(TransactionStatus.ACCEPTED);
 
-				.andExpect(status().isCreated()).andExpect(MockMvcResultMatchers.jsonPath("$.endToEndId").exists());
-	}
-
-	public static String asJsonString(final Object obj) {
-		try {
-			return new ObjectMapper().writeValueAsString(obj);
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	@Test
-	void testCreateResponseObjectHttpStatus() {
-		fail("Not yet implemented");
-	}
-
-	@Test
-	void testCreateResponseHttpStatus() {
-		fail("Not yet implemented");
+		when(paymentService.paymentLimitCheck(paymentInitiationRequest)).thenReturn(paymentResponse);
+		assertThat(responseEntity.getStatusCodeValue()).isEqualTo(201);
+		assertThat(paymentResponse.getStatus()).isEqualTo("Accepted");
+		assertFalse(paymentResponse.getPaymentId().isEmpty());
 	}
 
 	@Test
-	void testCreateResponseHttpHeadersHttpStatus() {
-		fail("Not yet implemented");
+	public void testContentType() throws PaymentException {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+		PaymentInitiationRequest paymentInitiationRequest = new PaymentInitiationRequest("NL02RABO7134384551",
+				"NL94ABNA1008270121", "1.00", "EUR", "1234");
+		ResponseEntity<PaymentResponse> responseEntity = paymentController.initiatePayment(null, null, null,
+				paymentInitiationRequest);
+		ResponseEntity.status(HttpStatus.CREATED);
+		PaymentResponse paymentResponse = new PaymentResponse();
+		paymentResponse.setPaymentId("1");
+		paymentResponse.setStatus(TransactionStatus.ACCEPTED);
+
+		when(paymentService.paymentLimitCheck(paymentInitiationRequest)).thenReturn(paymentResponse);
+		assertThat(responseEntity.getStatusCodeValue()).isEqualTo(201);
+		assertThat(paymentResponse.getStatus()).isEqualTo("Accepted");
+		assertFalse(paymentResponse.getPaymentId().isEmpty());
 	}
 
 }
