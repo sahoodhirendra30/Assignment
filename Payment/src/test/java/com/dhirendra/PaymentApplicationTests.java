@@ -73,7 +73,7 @@ class PaymentApplicationTests {
 	}
 	
 	@Test
-	public void testBadRequest() throws URISyntaxException {
+	public void testBadRequest_status_code_422() throws URISyntaxException {
 		final String url = BASE_URL + randomServerPort + "/v1.0.0/initiate-payment/";
 		URI uri = new URI(url);
 		PaymentInitiationRequest paymentInitiationRequest = new PaymentInitiationRequest("NL02RABO7134384551",
@@ -87,25 +87,6 @@ class PaymentApplicationTests {
 
 		// Verify request succeed
 		assertThat(result.getStatusCodeValue()).isEqualTo(422);
-	}
-
-	@Test
-	public void testInternalServerError() throws URISyntaxException {
-		final String url = BASE_URL + randomServerPort + "/v1.0.0/initiate-payment/";
-		URI uri = new URI(url);
-		PaymentInitiationRequest paymentInitiationRequest = new PaymentInitiationRequest("NL02RABO7134384551",
-				"NL94ABNA1008270121", "1.00", "EUR", "1234");
-
-		HttpHeaders headers = new HttpHeaders();
-		headers.set("xRequestId", "29318e25-cebd-498c-888a-f77672f66449");
-		headers.set("signatureCertificate", "lox3QmEaxEGU");
-		headers.set("signature", "lox3QmEaxEGU");
-		HttpEntity<PaymentInitiationRequest> request = new HttpEntity<>(paymentInitiationRequest, headers);
-
-		ResponseEntity<PaymentResponse> result = this.restTemplate.postForEntity(uri, request, PaymentResponse.class);
-
-		// Verify request succeed
-		assertThat(result.getStatusCodeValue()).isEqualTo(500);
 	}
 
 	
