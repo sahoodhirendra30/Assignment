@@ -1,7 +1,6 @@
 package com.dhirendra.controller;
 
 import java.security.cert.CertificateException;
-import java.util.UUID;
 
 import javax.validation.Valid;
 
@@ -42,6 +41,7 @@ public interface BaseController {
 			@Parameter(in = ParameterIn.HEADER, description = "", required = true, schema = @Schema()) @RequestHeader(value = "X-Request-Id", required = true) String xRequestId,
 			@Parameter(in = ParameterIn.HEADER, description = "", required = true, schema = @Schema()) @RequestHeader(value = "Signature-Certificate", required = true) String signatureCertificate,
 			@Parameter(in = ParameterIn.HEADER, description = "", required = true, schema = @Schema()) @RequestHeader(value = "Signature", required = true) String signature,
-			@Parameter(in = ParameterIn.DEFAULT, description = "The payment initiation request body", required = true, schema = @Schema()) @Valid @RequestBody PaymentInitiationRequest body) throws PaymentException, CertificateException ;
+			@Parameter(in = ParameterIn.DEFAULT, description = "The payment initiation request body", required = true, schema = @Schema()) @Valid @RequestBody PaymentInitiationRequest body)
+			throws PaymentException, CertificateException;
 
 }
