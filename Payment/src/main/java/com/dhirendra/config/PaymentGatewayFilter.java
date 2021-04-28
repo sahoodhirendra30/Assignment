@@ -1,11 +1,11 @@
 package com.dhirendra.config;
 
 import static com.dhirendra.util.PaymentCertUtil.decrypt;
+import static com.dhirendra.util.PaymentCertUtil.encrypt;
 import static com.dhirendra.util.PaymentCertUtil.stringToPrivateKeyConverter;
 import static com.dhirendra.util.PaymentCertUtil.stringToPublicKeyConverter;
 import static com.dhirendra.util.PaymentCertUtil.verify;
 import static com.dhirendra.util.PaymentUtil.getRequestBody;
-import static com.dhirendra.util.PaymentCertUtil.encrypt;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -22,6 +22,8 @@ import javax.servlet.annotation.WebFilter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
@@ -46,6 +48,9 @@ import lombok.extern.slf4j.Slf4j;
 @WebFilter(displayName = "filter", urlPatterns = "/*")
 public class PaymentGatewayFilter implements Filter {
 
+	@Value("payment.privateKey")
+	private String privateKey;
+
 	@Override
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
 			throws IOException, ServletException {
@@ -57,6 +62,7 @@ public class PaymentGatewayFilter implements Filter {
 
 		HttpServletRequest originalRequest = (HttpServletRequest) request;
 		HttpServletResponse originalResponse = (HttpServletResponse) response;
+		// verify CN name
 
 		try {
 			boolean allowAccess = checkCN(originalRequest, originalResponse);
@@ -71,8 +77,7 @@ public class PaymentGatewayFilter implements Filter {
 				String requestBody = getRequestBody((HttpServletRequest) request);
 				if (verify(requestBody, signature, stringToPublicKeyConverter(signatureCertificate))) {
 
-					String privateKey = "";
-					String publicKey = "";
+					String publicKey = signatureCertificate;
 
 					// String json decrypted
 					String decryptedBody = decrypt(requestBody, stringToPrivateKeyConverter(privateKey));
@@ -83,53 +88,69 @@ public class PaymentGatewayFilter implements Filter {
 							.getModelObject(decryptedBody);
 					HttpServletRequestWriter httpServletRequestWritableWrapper = new HttpServletRequestWriter(
 							originalRequest, paymentInitiationRequest);
+
+					Map<String, String> requestHeaders = new HashMap<>();
 					httpServletRequestWritableWrapper.addHeader("xRequestId", decryptedHeader);
 					httpServletRequestWritableWrapper.addHeader("signatureCertificate", signatureCertificate);
-					httpServletRequestWritableWrapper.addHeader("signature", signature);		
-					
+					httpServletRequestWritableWrapper.addHeader("signature", signature);
+					httpServletRequestWritableWrapper.setHeader(decryptedHeader);
+					httpServletRequestWritableWrapper.setCharacterEncoding("UTF-8");
+					httpServletRequestWritableWrapper.setContentType("text/plain");
 
 					HttpServletResponseWriter httpServletResponseWriter = new HttpServletResponseWriter(
 							originalResponse);
 
-					
 					String encryptedHeader = encrypt(httpServletResponseWriter.getHeader("xRequestId").toString(),
 							stringToPublicKeyConverter(publicKey));
-					
-					String encryptResponseBody = encrypt(PaymentUtil.getServletResponseAsString(httpServletResponseWriter.getResponse()),
+
+					String encryptResponseBody = encrypt(
+							PaymentUtil.getServletResponseAsString(httpServletResponseWriter.getResponse()),
 							stringToPublicKeyConverter(publicKey));
-					
-					//httpServletResponseWriter.addHeader("xRequestId", encryptedHeader);
-					//httpServletResponseWriter.addHeader("signature", signature);
-					Map<String, String> headers = new HashMap();
+
+					// httpServletResponseWriter.addHeader("xRequestId", encryptedHeader);
+					// httpServletResponseWriter.addHeader("signature", signature);
+					Map<String, String> headers = new HashMap<>();
 					headers.put("xRequestId", encryptedHeader);
 					headers.put("signature", signature);
 					httpServletResponseWriter.setContentType(MediaType.TEXT_PLAIN_VALUE);
 
-					String encryptedResponse = PaymentCertUtil.signSHA256WithRSA(encryptResponseBody,
-							headers, privateKey);
+					String encryptedResponse = PaymentCertUtil.signSHA256WithRSA(encryptResponseBody, headers,
+							privateKey);
 					httpServletResponseWriter.setResponse(encryptedResponse);
-					
+
 					chain.doFilter(httpServletRequestWritableWrapper, httpServletResponseWriter);
-					
+
+				} else {
+
+					throw new CertificateError("The signature is not a valid one", ErrorReasonCode.INVALID_SIGNATURE,
+							HttpStatus.FORBIDDEN);
+
 				}
 			} else {
 
-				throw new CertificateError("The signature is not a valid one", ErrorReasonCode.INVALID_SIGNATURE);
-
+				throw new CertificateError("The certificate not valid", ErrorReasonCode.UNKNOWN_CERTIFICATE,
+						HttpStatus.UNAUTHORIZED);
 			}
 		} catch (Exception e) {
-			throw new CertificateError("The certificate not valid", ErrorReasonCode.UNKNOWN_CERTIFICATE);
-			
+			throw new CertificateError("The certificate not valid", ErrorReasonCode.fromValue(e.getMessage()),
+					ErrorReasonCode.UNKNOWN_CERTIFICATE, HttpStatus.UNAUTHORIZED);
 		}
-
 	}
 
+	/**
+	 * Verify CN name
+	 * 
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws PaymentException
+	 */
 	public boolean checkCN(HttpServletRequest request, HttpServletResponse response) throws PaymentException {
 
 		boolean isAllowed;
 
 		X509Certificate certs[] = (X509Certificate[]) request.getAttribute("javax.servlet.request.X509Certificate");
-		if (null != PaymentCertUtil.getCN(certs) && "".equalsIgnoreCase(PaymentCertUtil.getCN(certs))) {
+		if (null != PaymentCertUtil.getCN(certs) && "Sandbox-TPP*".equalsIgnoreCase(PaymentCertUtil.getCN(certs))) {
 
 			isAllowed = true;
 
