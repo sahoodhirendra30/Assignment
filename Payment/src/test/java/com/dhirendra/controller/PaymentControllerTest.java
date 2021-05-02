@@ -24,12 +24,73 @@ import com.dhirendra.service.PaymentService;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentControllerTest {
+	
+	private MockMvc mockMvc;
 
 	@InjectMocks
 	PaymentController paymentController;
 
 	@Mock
 	PaymentService paymentService;
+	
+	@BeforeEach
+	public void setup() {
+		JacksonTester.initFields(this, new ObjectMapper());
+		
+		// MockMvc standalone approach
+		mockMvc = MockMvcBuilders.standaloneSetup(paymentController).setControllerAdvice(new PaymentExceptionHandler())
+				.build();
+	}
+	
+	/**
+	 * payment limit check exception
+	 * @throws Exception
+	 */
+
+	@Test
+	public void testlimitCheck() throws Exception {
+		MockHttpServletRequest mockRequest = new MockHttpServletRequest();
+		mockRequest.addHeader("xRequestId", "29318e25-cebd-498c-888a-f77672f66449");
+		mockRequest.addHeader("signatureCertificate", "lox3QmEaxEGU");
+		mockRequest.addHeader("signature", "lox3QmEaxEGU");		
+		mockRequest.setContentType(MediaType.APPLICATION_JSON_VALUE);
+		
+		PaymentInitiationRequest paymentInitiationRequest = new PaymentInitiationRequest("NL02RABO7134384551",
+				"NL94ABNA1008270121", "1.00", "EUR", "1234");
+		
+		
+		// given
+		given(paymentService.paymentLimitCheck(paymentInitiationRequest)).willReturn(
+				new PaymentResponse("1001", TransactionStatus.REJECTED, "Fail", ErrorReasonCode.LIMIT_EXCEEDED));
+
+		// when
+		MockHttpServletResponse response = mockMvc
+				.perform(post("/v0.1.1/initiate-payment").accept(MediaType.APPLICATION_JSON)).andReturn().getResponse();
+
+		// then
+		assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+		assertThat(response.getContentAsString()).isEqualTo(paymentResponse
+				.write(new PaymentResponse("1001", TransactionStatus.REJECTED, "Fail", ErrorReasonCode.LIMIT_EXCEEDED))
+				.getJson());
+	}
+	
+	@Test
+	public void testNotSetHeader() throws Exception {
+
+		PaymentInitiationRequest paymentInitiationRequest = new PaymentInitiationRequest("NL02RABO7134384551",
+				"NL94ABNA1008270121", "1.00", "EUR", "1234");
+		// given
+		given(paymentService.paymentLimitCheck(paymentInitiationRequest).willThrow(new PaymentException(0, null)));
+
+		// when
+		MockHttpServletResponse response = mockMvc.perform(post("/initiate-payment").accept(MediaType.APPLICATION_JSON))
+				.andReturn().getResponse();
+
+		// then
+		assertThat(response.getStatus()).isEqualTo(HttpStatus.NOT_FOUND.value());
+		assertThat(response.getContentAsString()).isEmpty();
+	}
+	
 
 	@Test
 	public void testPaymentInitiationRequestRequestBodyWithoutHeaders() throws PaymentException {
